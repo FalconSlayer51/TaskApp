@@ -38,7 +38,11 @@ export function TaskEditor({ open, task, submitting, onOpenChange, onSubmit }: P
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto">
+        <SheetContent
+          side="bottom"
+          className="max-h-[90dvh] overflow-y-auto"
+          style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
+        >
           <SheetHeader>
             <SheetTitle>{title}</SheetTitle>
           </SheetHeader>

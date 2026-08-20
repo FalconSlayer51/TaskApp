@@ -52,15 +52,18 @@ export function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div>
+      <div className="hidden md:block">
         <h2 className="text-2xl tracking-tight">Overview</h2>
         <p className="text-sm text-muted-foreground">
           A snapshot of everything you own.
           {query.isFetching ? " Updating…" : ""}
         </p>
       </div>
+      {query.isFetching ? (
+        <p className="text-sm text-muted-foreground md:hidden">Updating…</p>
+      ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4 md:gap-4">
         <Kpi label="Total" value={data.total} />
         <Kpi label="Completed" value={data.completed} hint={`${data.completionPercentage}% done`} />
         <Kpi label="In progress" value={data.inProgress} />
@@ -73,7 +76,7 @@ export function DashboardPage() {
             <CardTitle>By status</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={statusConfig} className="aspect-auto h-72">
+            <ChartContainer config={statusConfig} className="aspect-auto h-56 md:h-72">
               <PieChart>
                 <ChartTooltip content={<ChartTooltipContent hideLabel />} />
                 <Pie data={statusData} dataKey="value" nameKey="name" innerRadius={56} strokeWidth={4}>
@@ -90,7 +93,7 @@ export function DashboardPage() {
             <CardTitle>By priority</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={priorityConfig} className="aspect-auto h-72">
+            <ChartContainer config={priorityConfig} className="aspect-auto h-56 md:h-72">
               <BarChart data={priorityData}>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="priority" tickLine={false} axisLine={false} />

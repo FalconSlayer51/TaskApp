@@ -41,7 +41,7 @@ export function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
-      <div>
+      <div className="hidden md:block">
         <h2 className="text-2xl tracking-tight">Settings</h2>
         <p className="text-sm text-muted-foreground">Appearance is saved on this device. Your name lives with your account.</p>
       </div>
@@ -99,7 +99,7 @@ export function SettingsPage() {
               <Label>Email</Label>
               <Input className="min-h-11" value={user?.email ?? ""} disabled />
             </div>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
+            <Button className="min-h-11 w-full md:w-auto" type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? "Saving…" : "Save name"}
             </Button>
           </form>

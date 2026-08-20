@@ -1,14 +1,5 @@
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import {
-  LayoutDashboard,
-  ListChecks,
-  Columns3,
-  Settings,
-  LogOut,
-  Moon,
-  Sun,
-  Monitor,
-} from "lucide-react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { LogOut, Monitor, Moon, Sun } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -24,7 +15,6 @@ import {
   SidebarRail,
   SidebarSeparator,
   SidebarTrigger,
-  useSidebar,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -40,33 +30,15 @@ import { useAuthStore } from "@/features/auth/authStore";
 import { useUiStore } from "@/features/settings/uiStore";
 import { useThemeStore } from "@/features/settings/themeStore";
 import { queryClient } from "@/lib/queryClient";
-import { Outlet } from "react-router-dom";
-import { useEffect } from "react";
-
-const nav = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/tasks", label: "Tasks", icon: ListChecks },
-  { to: "/board", label: "Board", icon: Columns3 },
-  { to: "/settings", label: "Settings", icon: Settings },
-];
-
-const titles: Record<string, string> = {
-  "/": "Dashboard",
-  "/tasks": "Tasks",
-  "/board": "Board",
-  "/settings": "Settings",
-};
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobileTabBar } from "@/app/MobileTabBar";
+import { appNav, pageTitles } from "@/app/nav";
 
 function AppSidebar() {
-  const { setOpenMobile, isMobile } = useSidebar();
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    setOpenMobile(false);
-  }, [location.pathname, setOpenMobile]);
 
   const initials =
     user?.name
@@ -77,7 +49,7 @@ function AppSidebar() {
       .toUpperCase() ?? "U";
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" className="hidden md:flex">
       <SidebarHeader className="px-3 py-4">
         <div className="flex items-center gap-2">
           <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">
@@ -93,14 +65,14 @@ function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {nav.map((item) => (
+              {appNav.map((item) => (
                 <SidebarMenuItem key={item.to}>
                   <SidebarMenuButton
                     asChild
                     isActive={location.pathname === item.to}
                     tooltip={item.label}
                   >
-                    <NavLink to={item.to}>
+                    <NavLink to={item.to} end={item.to === "/"}>
                       <item.icon />
                       <span>{item.label}</span>
                     </NavLink>
@@ -129,7 +101,6 @@ function AppSidebar() {
               onClick={() => {
                 logout();
                 queryClient.clear();
-                if (isMobile) setOpenMobile(false);
                 navigate("/login");
               }}
             >
@@ -169,21 +140,24 @@ function ThemeMenu() {
 export function AppShell() {
   const collapsed = useUiStore((s) => s.sidebarCollapsed);
   const setCollapsed = useUiStore((s) => s.setSidebarCollapsed);
+  const isMobile = useIsMobile();
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
-  const title = titles[location.pathname] ?? "Task Tracker";
+  const title = pageTitles[location.pathname] ?? "Task Tracker";
 
   return (
     <SidebarProvider
-      open={!collapsed}
-      onOpenChange={(open) => setCollapsed(!open)}
+      open={isMobile ? undefined : !collapsed}
+      onOpenChange={isMobile ? undefined : (open) => setCollapsed(!open)}
     >
       <AppSidebar />
       <SidebarInset>
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b bg-background/90 px-3 backdrop-blur md:px-6">
-          <SidebarTrigger className="min-h-11 min-w-11 md:min-h-8 md:min-w-8" />
+        <header
+          className="sticky top-0 z-20 flex min-h-14 items-center gap-2 border-b bg-background/90 px-3 pt-[env(safe-area-inset-top)] backdrop-blur md:px-6"
+        >
+          <SidebarTrigger className="hidden min-h-8 min-w-8 md:inline-flex" />
           <h1 className="flex-1 text-base font-medium tracking-tight md:text-lg">{title}</h1>
           <ThemeMenu />
           <DropdownMenu>
@@ -216,9 +190,10 @@ export function AppShell() {
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
-        <div className="flex-1 p-4 md:p-6">
+        <div className="flex-1 p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:p-6 md:pb-6">
           <Outlet />
         </div>
+        <MobileTabBar />
       </SidebarInset>
     </SidebarProvider>
   );

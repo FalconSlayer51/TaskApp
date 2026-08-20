@@ -1,17 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import { MoreHorizontal, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -21,12 +14,20 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/EmptyState";
 import { QueryError } from "@/components/QueryError";
 import { TasksSkeleton } from "@/components/PageSkeleton";
 import { useTaskFilterStore } from "@/features/tasks/taskFilterStore";
 import { useTaskMutations, useTasks } from "@/features/tasks/hooks";
 import { TaskEditor } from "@/features/tasks/TaskEditor";
+import { FilterFields, FilterSheet } from "@/features/tasks/FilterSheet";
 import { PriorityBadge, StatusBadge } from "@/features/tasks/badges";
 import type { PublicTask } from "@/lib/types";
 import { getApiErrorMessage } from "@/lib/api";
@@ -35,13 +36,6 @@ import type { TaskFormValues } from "@/features/tasks/TaskFormFields";
 export function TasksPage() {
   const search = useTaskFilterStore((s) => s.search);
   const setSearch = useTaskFilterStore((s) => s.setSearch);
-  const status = useTaskFilterStore((s) => s.status);
-  const setStatus = useTaskFilterStore((s) => s.setStatus);
-  const priority = useTaskFilterStore((s) => s.priority);
-  const setPriority = useTaskFilterStore((s) => s.setPriority);
-  const sort = useTaskFilterStore((s) => s.sort);
-  const order = useTaskFilterStore((s) => s.order);
-  const setSort = useTaskFilterStore((s) => s.setSort);
   const page = useTaskFilterStore((s) => s.page);
   const setPage = useTaskFilterStore((s) => s.setPage);
 
@@ -75,94 +69,62 @@ export function TasksPage() {
 
   const submitting = mutations.create.isPending || mutations.update.isPending;
 
-  const filters = useMemo(
-    () => (
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-        <div className="flex-1 space-y-2">
-          <Label htmlFor="search">Search</Label>
-          <Input
-            id="search"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="Filter by title"
-            className="min-h-11"
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <div className="space-y-2">
-            <Label>Status</Label>
-            <Select value={status ?? "all"} onValueChange={(v) => setStatus(v as typeof status)}>
-              <SelectTrigger className="min-h-11 w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="todo">Todo</SelectItem>
-                <SelectItem value="in_progress">In progress</SelectItem>
-                <SelectItem value="done">Done</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Priority</Label>
-            <Select
-              value={priority ?? "all"}
-              onValueChange={(v) => setPriority(v as typeof priority)}
-            >
-              <SelectTrigger className="min-h-11 w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="col-span-2 space-y-2 sm:col-span-1">
-            <Label>Sort</Label>
-            <Select
-              value={`${sort}:${order}`}
-              onValueChange={(v) => {
-                const [s, o] = v.split(":") as [typeof sort, typeof order];
-                setSort(s, o);
-              }}
-            >
-              <SelectTrigger className="min-h-11 w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="createdAt:desc">Newest</SelectItem>
-                <SelectItem value="createdAt:asc">Oldest</SelectItem>
-                <SelectItem value="dueDate:asc">Due date</SelectItem>
-                <SelectItem value="priority:desc">Priority</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-    ),
-    [draft, status, priority, sort, order, setPriority, setSort, setStatus],
-  );
+  const completeTask = (task: PublicTask) => {
+    mutations.update.mutate(
+      { id: task.id, payload: { status: "done" } },
+      {
+        onSuccess: () => toast.success("Marked as done"),
+        onError: (e) => toast.error(getApiErrorMessage(e)),
+      },
+    );
+  };
+
+  const removeTask = (task: PublicTask) => {
+    if (!window.confirm("Delete this task?")) return;
+    mutations.remove.mutate(task.id, {
+      onSuccess: () => toast.success("Task deleted"),
+      onError: (e) => toast.error(getApiErrorMessage(e)),
+    });
+  };
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <p className="text-sm text-muted-foreground md:sr-only">
+          Search and complete your work.
+          {isFetching ? " Updating…" : ""}
+        </p>
+        <div className="hidden md:block">
           <h2 className="text-2xl tracking-tight">Your tasks</h2>
           <p className="text-sm text-muted-foreground">
             Filter, complete, and keep due dates in view.
             {isFetching ? " Updating…" : ""}
           </p>
         </div>
-        <Button className="min-h-11 sm:min-h-8" onClick={openCreate}>
+        <Button className="min-h-11 w-full md:w-auto md:min-h-8" onClick={openCreate}>
           <Plus />
           Create task
         </Button>
       </div>
 
-      {filters}
+      <div className="flex flex-col gap-3 md:flex-row md:items-end">
+        <div className="flex items-end gap-2 md:min-w-0 md:flex-1">
+          <div className="min-w-0 flex-1 space-y-2">
+            <Label htmlFor="search">Search</Label>
+            <Input
+              id="search"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="Filter by title"
+              className="min-h-11"
+            />
+          </div>
+          <FilterSheet />
+        </div>
+        <div className="hidden min-w-0 flex-[2] md:block">
+          <FilterFields />
+        </div>
+      </div>
 
       {query.isLoading ? <TasksSkeleton /> : null}
       {query.isError ? (
@@ -180,7 +142,7 @@ export function TasksPage() {
 
       {!query.isLoading && items.length > 0 ? (
         <>
-          <div className="hidden md:block overflow-hidden rounded-xl border">
+          <div className="hidden overflow-hidden rounded-xl border md:block">
             <Table>
               <TableHeader className="sticky top-0 bg-muted/60">
                 <TableRow>
@@ -206,19 +168,7 @@ export function TasksPage() {
                     </TableCell>
                     <TableCell className="space-x-1 text-right">
                       {task.status !== "done" ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            mutations.update.mutate(
-                              { id: task.id, payload: { status: "done" } },
-                              {
-                                onSuccess: () => toast.success("Marked as done"),
-                                onError: (e) => toast.error(getApiErrorMessage(e)),
-                              },
-                            )
-                          }
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => completeTask(task)}>
                           Complete
                         </Button>
                       ) : null}
@@ -232,17 +182,7 @@ export function TasksPage() {
                       >
                         Edit
                       </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => {
-                          if (!window.confirm("Delete this task?")) return;
-                          mutations.remove.mutate(task.id, {
-                            onSuccess: () => toast.success("Task deleted"),
-                            onError: (e) => toast.error(getApiErrorMessage(e)),
-                          });
-                        }}
-                      >
+                      <Button variant="destructive" size="sm" onClick={() => removeTask(task)}>
                         Delete
                       </Button>
                     </TableCell>
@@ -255,71 +195,55 @@ export function TasksPage() {
           <div className="space-y-3 md:hidden">
             {items.map((task) => (
               <Card key={task.id}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">{task.title}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex flex-wrap gap-2">
-                    <StatusBadge status={task.status} />
-                    <PriorityBadge priority={task.priority} />
-                    <span className="text-sm text-muted-foreground">
-                      {task.dueDate ? format(new Date(task.dueDate), "MMM d") : "No due date"}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {task.status !== "done" ? (
-                      <Button
-                        className="min-h-11"
-                        variant="outline"
-                        onClick={() =>
-                          mutations.update.mutate(
-                            { id: task.id, payload: { status: "done" } },
-                            {
-                              onSuccess: () => toast.success("Marked as done"),
-                              onError: (e) => toast.error(getApiErrorMessage(e)),
-                            },
-                          )
-                        }
-                      >
-                        Complete
+                <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-2">
+                  <CardTitle className="text-base leading-snug">{task.title}</CardTitle>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="min-h-11 min-w-11 shrink-0">
+                        <MoreHorizontal />
+                        <span className="sr-only">Task actions</span>
                       </Button>
-                    ) : null}
-                    <Button
-                      className="min-h-11"
-                      variant="outline"
-                      onClick={() => {
-                        setEditing(task);
-                        setEditorOpen(true);
-                      }}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      className="min-h-11"
-                      variant="destructive"
-                      onClick={() => {
-                        if (!window.confirm("Delete this task?")) return;
-                        mutations.remove.mutate(task.id, {
-                          onSuccess: () => toast.success("Task deleted"),
-                          onError: (e) => toast.error(getApiErrorMessage(e)),
-                        });
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {task.status !== "done" ? (
+                        <DropdownMenuItem onClick={() => completeTask(task)}>
+                          Complete
+                        </DropdownMenuItem>
+                      ) : null}
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setEditing(task);
+                          setEditorOpen(true);
+                        }}
+                      >
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem variant="destructive" onClick={() => removeTask(task)}>
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </CardHeader>
+                <CardContent className="flex flex-wrap gap-2">
+                  <StatusBadge status={task.status} />
+                  <PriorityBadge priority={task.priority} />
+                  <span className="text-sm text-muted-foreground">
+                    {task.dueDate ? format(new Date(task.dueDate), "MMM d") : "No due date"}
+                  </span>
                 </CardContent>
               </Card>
             ))}
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
               Page {page} of {totalPages}
             </p>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:flex">
               <Button
                 variant="outline"
+                className="min-h-11 md:min-h-8"
                 disabled={page <= 1}
                 onClick={() => setPage(page - 1)}
               >
@@ -327,6 +251,7 @@ export function TasksPage() {
               </Button>
               <Button
                 variant="outline"
+                className="min-h-11 md:min-h-8"
                 disabled={page >= totalPages}
                 onClick={() => setPage(page + 1)}
               >

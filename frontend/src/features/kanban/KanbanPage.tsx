@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import {
@@ -29,6 +29,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { QueryError } from "@/components/QueryError";
 import { KanbanSkeleton } from "@/components/PageSkeleton";
 import { PriorityBadge, StatusBadge } from "@/features/tasks/badges";
+import { FilterFields, FilterSheet } from "@/features/tasks/FilterSheet";
 import { listTasks, updateTask } from "@/features/tasks/api";
 import { useTaskFilterStore } from "@/features/tasks/taskFilterStore";
 import { queryKeys } from "@/lib/queryKeys";
@@ -37,6 +38,7 @@ import { queryClient } from "@/lib/queryClient";
 import type { PublicTask, TaskStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const columns: { id: TaskStatus; title: string }[] = [
   { id: "todo", title: "Todo" },
@@ -46,12 +48,11 @@ const columns: { id: TaskStatus; title: string }[] = [
 
 export function KanbanPage() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const status = useTaskFilterStore((s) => s.status);
-  const setStatus = useTaskFilterStore((s) => s.setStatus);
-  const priority = useTaskFilterStore((s) => s.priority);
-  const setPriority = useTaskFilterStore((s) => s.setPriority);
   const search = useTaskFilterStore((s) => s.search);
   const setSearch = useTaskFilterStore((s) => s.setSearch);
+  const priority = useTaskFilterStore((s) => s.priority);
   const [draft, setDraft] = useState(search);
   useEffect(() => {
     const id = window.setTimeout(() => setSearch(draft), 250);
@@ -95,24 +96,12 @@ export function KanbanPage() {
     return map;
   }, [items]);
 
-  const onDragStart = (event: DragStartEvent) => {
-    const task = items.find((t) => t.id === event.active.id);
-    setActive(task ?? null);
-  };
-
-  const onDragEnd = async (event: DragEndEvent) => {
-    setActive(null);
-    const overId = event.over?.id;
-    if (!overId) return;
-    const task = items.find((t) => t.id === event.active.id);
-    if (!task) return;
-    const column = columns.find((c) => c.id === overId || grouped[c.id].some((t) => t.id === overId));
-    if (!column || column.id === task.status) return;
-
+  const moveTask = async (task: PublicTask, nextStatus: TaskStatus) => {
+    if (nextStatus === task.status) return;
     const previous = task.status;
-    setOptimistic((current) => ({ ...current, [task.id]: column.id }));
+    setOptimistic((current) => ({ ...current, [task.id]: nextStatus }));
     try {
-      await updateTask(task.id, { status: column.id });
+      await updateTask(task.id, { status: nextStatus });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["tasks"] }),
         queryClient.invalidateQueries({ queryKey: queryKeys.analytics() }),
@@ -124,53 +113,67 @@ export function KanbanPage() {
     }
   };
 
+  const onDragStart = (event: DragStartEvent) => {
+    const task = items.find((t) => t.id === event.active.id);
+    setActive(task ?? null);
+  };
+
+  const onDragEnd = async (event: DragEndEvent) => {
+    setActive(null);
+    const overId = event.over?.id;
+    if (!overId) return;
+    const task = items.find((t) => t.id === event.active.id);
+    if (!task) return;
+    const column = columns.find(
+      (c) => c.id === overId || grouped[c.id].some((t) => t.id === overId),
+    );
+    if (!column) return;
+    await moveTask(task, column.id);
+  };
+
+  const visibleColumns = columns.filter((col) => status === "all" || status === col.id);
+
+  const board = (
+    <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 md:mx-0 md:px-0">
+      {visibleColumns.map((col) => (
+        <KanbanColumn
+          key={col.id}
+          id={col.id}
+          title={col.title}
+          tasks={grouped[col.id]}
+          draggable={!isMobile}
+          onStatusChange={isMobile ? moveTask : undefined}
+        />
+      ))}
+    </div>
+  );
+
   return (
     <div className="space-y-6">
-      <div>
+      <div className="hidden md:block">
         <h2 className="text-2xl tracking-tight">Board</h2>
         <p className="text-sm text-muted-foreground">Drag a card to change status.</p>
       </div>
+      <p className="text-sm text-muted-foreground md:hidden">
+        Swipe columns, then set status on a card.
+      </p>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-end">
-        <div className="flex-1 space-y-2">
-          <Label htmlFor="board-search">Search</Label>
-          <Input
-            id="board-search"
-            className="min-h-11"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="Filter by title"
-          />
+        <div className="flex items-end gap-2 md:min-w-0 md:flex-1">
+          <div className="min-w-0 flex-1 space-y-2">
+            <Label htmlFor="board-search">Search</Label>
+            <Input
+              id="board-search"
+              className="min-h-11"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="Filter by title"
+            />
+          </div>
+          <FilterSheet showSort={false} />
         </div>
-        <div className="grid grid-cols-2 gap-3 md:w-80">
-          <div className="space-y-2">
-            <Label>Status</Label>
-            <Select value={status ?? "all"} onValueChange={(v) => setStatus(v as typeof status)}>
-              <SelectTrigger className="min-h-11 w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All columns</SelectItem>
-                <SelectItem value="todo">Todo</SelectItem>
-                <SelectItem value="in_progress">In progress</SelectItem>
-                <SelectItem value="done">Done</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Priority</Label>
-            <Select value={priority ?? "all"} onValueChange={(v) => setPriority(v as typeof priority)}>
-              <SelectTrigger className="min-h-11 w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="hidden min-w-0 flex-1 md:block">
+          <FilterFields showSort={false} />
         </div>
       </div>
 
@@ -181,30 +184,30 @@ export function KanbanPage() {
       {!query.isLoading && !query.isError && items.length === 0 ? (
         <EmptyState
           headline="The board is empty"
-          description="Create a task, then drag it across Todo, In progress, and Done."
+          description={
+            isMobile
+              ? "Create a task, then change its status from the card."
+              : "Create a task, then drag it across Todo, In progress, and Done."
+          }
           actionLabel="Create task"
           onAction={() => navigate("/tasks")}
         />
       ) : null}
 
       {!query.isLoading && items.length > 0 ? (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragStart={onDragStart}
-          onDragEnd={onDragEnd}
-        >
-          <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4">
-            {columns
-              .filter((col) => status === "all" || status === col.id)
-              .map((col) => (
-                <KanbanColumn key={col.id} id={col.id} title={col.title} tasks={grouped[col.id]} />
-              ))}
-          </div>
-          <DragOverlay>
-            {active ? <TaskCard task={active} overlay /> : null}
-          </DragOverlay>
-        </DndContext>
+        isMobile ? (
+          board
+        ) : (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+          >
+            {board}
+            <DragOverlay>{active ? <TaskCard task={active} overlay /> : null}</DragOverlay>
+          </DndContext>
+        )
       ) : null}
     </div>
   );
@@ -214,29 +217,60 @@ function KanbanColumn({
   id,
   title,
   tasks,
+  draggable,
+  onStatusChange,
 }: {
   id: TaskStatus;
   title: string;
   tasks: PublicTask[];
+  draggable: boolean;
+  onStatusChange?: (task: PublicTask, status: TaskStatus) => void;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id });
-  return (
-    <div
-      ref={setNodeRef}
-      className={cn(
-        "min-w-[280px] flex-1 snap-start rounded-xl border bg-muted/40 p-3",
-        isOver && "ring-2 ring-primary/40",
-      )}
-    >
+  const className =
+    "w-[min(85vw,20rem)] shrink-0 snap-start rounded-xl border bg-muted/40 p-3 md:w-auto md:min-w-[280px] md:flex-1";
+
+  const body = (
+    <>
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-medium">{title}</h3>
         <span className="text-xs text-muted-foreground">{tasks.length}</span>
       </div>
       <div className="space-y-2">
-        {tasks.map((task) => (
-          <DraggableCard key={task.id} task={task} />
-        ))}
+        {tasks.map((task) =>
+          draggable ? (
+            <DraggableCard key={task.id} task={task} />
+          ) : (
+            <TaskCard key={task.id} task={task} onStatusChange={onStatusChange} />
+          ),
+        )}
       </div>
+    </>
+  );
+
+  if (!draggable) {
+    return <div className={className}>{body}</div>;
+  }
+
+  return (
+    <DroppableColumn id={id} className={className}>
+      {body}
+    </DroppableColumn>
+  );
+}
+
+function DroppableColumn({
+  id,
+  className,
+  children,
+}: {
+  id: TaskStatus;
+  className: string;
+  children: ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  return (
+    <div ref={setNodeRef} className={cn(className, isOver && "ring-2 ring-primary/40")}>
+      {children}
     </div>
   );
 }
@@ -258,17 +292,44 @@ function DraggableCard({ task }: { task: PublicTask }) {
   );
 }
 
-function TaskCard({ task, overlay }: { task: PublicTask; overlay?: boolean }) {
+function TaskCard({
+  task,
+  overlay,
+  onStatusChange,
+}: {
+  task: PublicTask;
+  overlay?: boolean;
+  onStatusChange?: (task: PublicTask, status: TaskStatus) => void;
+}) {
   return (
     <Card className={cn(overlay && "rotate-1 shadow-lg")}>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm leading-snug">{task.title}</CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-wrap items-center gap-2">
-        <StatusBadge status={task.status} />
-        <PriorityBadge priority={task.priority} />
-        {task.dueDate ? (
-          <span className="text-xs text-muted-foreground">{format(new Date(task.dueDate), "MMM d")}</span>
+      <CardContent className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {onStatusChange ? null : <StatusBadge status={task.status} />}
+          <PriorityBadge priority={task.priority} />
+          {task.dueDate ? (
+            <span className="text-xs text-muted-foreground">
+              {format(new Date(task.dueDate), "MMM d")}
+            </span>
+          ) : null}
+        </div>
+        {onStatusChange ? (
+          <Select
+            value={task.status}
+            onValueChange={(value) => onStatusChange(task, value as TaskStatus)}
+          >
+            <SelectTrigger className="min-h-11 w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todo">Todo</SelectItem>
+              <SelectItem value="in_progress">In progress</SelectItem>
+              <SelectItem value="done">Done</SelectItem>
+            </SelectContent>
+          </Select>
         ) : null}
       </CardContent>
     </Card>

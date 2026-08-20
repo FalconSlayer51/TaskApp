@@ -33,8 +33,8 @@ export function LoginPage() {
   });
 
   return (
-    <div className="flex min-h-svh items-center justify-center bg-background px-4 py-10">
-      <div className="w-full max-w-md rounded-2xl border bg-card p-6 shadow-sm md:p-8">
+    <div className="flex min-h-dvh items-center justify-center bg-background px-4 py-10">
+      <div className="w-full max-w-md rounded-none bg-transparent p-0 sm:rounded-2xl sm:border sm:bg-card sm:p-6 sm:shadow-sm md:p-8">
         <p className="text-xs font-medium tracking-wide text-primary uppercase">Task Tracker</p>
         <h1 className="mt-2 text-3xl tracking-tight">Welcome back</h1>
         <p className="mt-2 text-sm text-muted-foreground">Sign in to pick up your personal tasks.</p>
