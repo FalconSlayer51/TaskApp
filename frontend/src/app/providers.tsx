@@ -53,14 +53,15 @@ export function Providers({ children }: { children: ReactNode }) {
   }, [theme]);
 
   useEffect(() => {
-    const unsub = useAuthStore.persist.onFinishHydration(() => {
-      useAuthStore.getState().setHydrated(true);
-    });
+    const finish = () => useAuthStore.setState({ hydrated: true });
+    const unsub = useAuthStore.persist.onFinishHydration(finish);
     if (useAuthStore.persist.hasHydrated()) {
-      useAuthStore.getState().setHydrated(true);
+      finish();
     }
+    const timeout = window.setTimeout(finish, 0);
     return () => {
       unsub();
+      window.clearTimeout(timeout);
     };
   }, []);
 

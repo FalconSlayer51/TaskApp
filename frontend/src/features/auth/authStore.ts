@@ -26,8 +26,8 @@ export const useAuthStore = create<AuthState>()(
     {
       name: "task-tracker-auth",
       partialize: (state) => ({ token: state.token, user: state.user }),
-      onRehydrateStorage: () => () => {
-        useAuthStore.getState().setHydrated(true);
+      onRehydrateStorage: () => (state) => {
+        state?.setHydrated(true);
       },
     },
   ),
