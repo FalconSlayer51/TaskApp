@@ -13,6 +13,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DatePicker } from "@/components/DatePicker";
+import { useMembers } from "@/features/workspaces/hooks";
+import { useWorkspaceStore } from "@/features/workspaces/workspaceStore";
 import type { PublicTask, TaskPriority, TaskStatus } from "@/lib/types";
 
 const schema = z.object({
@@ -21,6 +23,7 @@ const schema = z.object({
   status: z.enum(["todo", "in_progress", "done"]),
   priority: z.enum(["low", "medium", "high"]),
   dueDate: z.date().optional().nullable(),
+  assigneeId: z.string(),
 });
 
 export type TaskFormValues = z.infer<typeof schema>;
@@ -33,6 +36,8 @@ type Props = {
 };
 
 export function TaskFormFields({ task, submitting, onSubmit, onCancel }: Props) {
+  const workspaceId = useWorkspaceStore((s) => s.currentWorkspaceId);
+  const members = useMembers(workspaceId);
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(schema),
     mode: "onBlur",
@@ -42,6 +47,7 @@ export function TaskFormFields({ task, submitting, onSubmit, onCancel }: Props) 
       status: (task?.status ?? "todo") as TaskStatus,
       priority: (task?.priority ?? "medium") as TaskPriority,
       dueDate: task?.dueDate ? new Date(task.dueDate) : undefined,
+      assigneeId: task?.assigneeId ?? "none",
     },
   });
 
@@ -96,6 +102,25 @@ export function TaskFormFields({ task, submitting, onSubmit, onCancel }: Props) 
             </SelectContent>
           </Select>
         </div>
+      </div>
+      <div className="space-y-2">
+        <Label>Assignee</Label>
+        <Select
+          value={form.watch("assigneeId")}
+          onValueChange={(value) => form.setValue("assigneeId", value)}
+        >
+          <SelectTrigger className="min-h-11 w-full">
+            <SelectValue placeholder="Unassigned" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Unassigned</SelectItem>
+            {(members.data ?? []).map((member) => (
+              <SelectItem key={member.id} value={member.id}>
+                {member.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="space-y-2">
         <Label>Due date</Label>

@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { createApp } from "./app.js";
 import { connectDb } from "./config/db.js";
+import { migratePersonalWorkspaces } from "./utils/workspaces.js";
 
 const port = Number(process.env.PORT ?? 4000);
 const mongoUri = process.env.MONGODB_URI;
@@ -13,6 +14,7 @@ if (!mongoUri) {
 const app = createApp();
 
 connectDb(mongoUri)
+  .then(() => migratePersonalWorkspaces())
   .then(() => {
     app.listen(port, () => {
       console.log(`API listening on http://localhost:${port}`);

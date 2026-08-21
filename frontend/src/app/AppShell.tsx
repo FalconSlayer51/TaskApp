@@ -33,6 +33,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileTabBar } from "@/app/MobileTabBar";
 import { appNav, pageTitles } from "@/app/nav";
+import { WorkspaceSwitcher } from "@/features/workspaces/WorkspaceSwitcher";
 
 function AppSidebar() {
   const location = useLocation();
@@ -57,7 +58,7 @@ function AppSidebar() {
           </div>
           <div className="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
             <span className="font-heading truncate text-sm font-semibold">Task Tracker</span>
-            <span className="truncate text-xs text-muted-foreground">Personal workspace</span>
+            <WorkspaceSwitcher compact />
           </div>
         </div>
       </SidebarHeader>
@@ -158,7 +159,10 @@ export function AppShell() {
           className="sticky top-0 z-20 flex min-h-14 items-center gap-2 border-b bg-background/90 px-3 pt-[env(safe-area-inset-top)] backdrop-blur md:px-6"
         >
           <SidebarTrigger className="hidden min-h-8 min-w-8 md:inline-flex" />
-          <h1 className="flex-1 text-base font-medium tracking-tight md:text-lg">{title}</h1>
+          <h1 className="min-w-0 flex-1 truncate text-base font-medium tracking-tight md:text-lg">{title}</h1>
+          <div className="md:hidden">
+            <WorkspaceSwitcher compact />
+          </div>
           <ThemeMenu />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

@@ -9,6 +9,10 @@ declare global {
         name: string;
         role: "user";
       };
+      workspace?: {
+        id: string;
+        role: "owner" | "member";
+      };
     }
   }
 }

@@ -12,8 +12,29 @@ export type PublicUser = {
   updatedAt: string;
 };
 
+export type MembershipRole = "owner" | "member";
+
+export type PublicMember = {
+  id: string;
+  name: string;
+  email: string;
+  role: MembershipRole;
+};
+
+export type PublicWorkspace = {
+  id: string;
+  name: string;
+  ownerId: string;
+  role: MembershipRole;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type PublicTask = {
   id: string;
+  workspaceId: string;
+  createdBy: string;
+  assigneeId: string | null;
   userId: string;
   title: string;
   description: string;
@@ -38,6 +59,7 @@ export type TaskFilters = {
   search: string;
   sort: "dueDate" | "priority" | "createdAt";
   order: "asc" | "desc";
+  assignedToMe: boolean;
 };
 
 export type AnalyticsResponse = {

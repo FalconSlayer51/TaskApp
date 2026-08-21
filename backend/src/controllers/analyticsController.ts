@@ -5,13 +5,13 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import type { AnalyticsResponse, TaskPriority, TaskStatus } from "../types/api.js";
 
 export const getAnalytics = asyncHandler(async (req: Request, res: Response) => {
-  const userId = new mongoose.Types.ObjectId(req.user?.id);
+  const workspaceId = new mongoose.Types.ObjectId(req.workspace?.id);
   const now = new Date();
   const weekEnd = new Date(now);
   weekEnd.setDate(weekEnd.getDate() + 7);
 
   const [row] = await Task.aggregate([
-    { $match: { userId } },
+    { $match: { workspaceId } },
     {
       $facet: {
         totals: [

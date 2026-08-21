@@ -7,6 +7,7 @@ type FilterState = TaskFilters & {
   setStatus: (status: TaskFilters["status"]) => void;
   setPriority: (priority: TaskFilters["priority"]) => void;
   setSort: (sort: TaskFilters["sort"], order?: TaskFilters["order"]) => void;
+  setAssignedToMe: (assignedToMe: boolean) => void;
   setPage: (page: number) => void;
   reset: () => void;
 };
@@ -17,6 +18,7 @@ const defaults: TaskFilters & { page: number } = {
   search: "",
   sort: "createdAt",
   order: "desc",
+  assignedToMe: false,
   page: 1,
 };
 
@@ -26,6 +28,7 @@ export const useTaskFilterStore = create<FilterState>((set) => ({
   setStatus: (status) => set({ status, page: 1 }),
   setPriority: (priority) => set({ priority, page: 1 }),
   setSort: (sort, order) => set({ sort, order: order ?? "desc", page: 1 }),
+  setAssignedToMe: (assignedToMe) => set({ assignedToMe, page: 1 }),
   setPage: (page) => set({ page }),
   reset: () => set(defaults),
 }));

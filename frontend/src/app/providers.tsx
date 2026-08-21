@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
 import { useAuthStore } from "@/features/auth/authStore";
 import { applyTheme, useThemeStore } from "@/features/settings/themeStore";
+import { useWorkspaceStore } from "@/features/workspaces/workspaceStore";
 import { ErrorBoundary } from "@/app/ErrorBoundary";
 
 let interceptorsBound = false;
@@ -19,6 +20,10 @@ function bindApiInterceptors() {
     const token = useAuthStore.getState().token;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    const workspaceId = useWorkspaceStore.getState().currentWorkspaceId;
+    if (workspaceId) {
+      config.headers["X-Workspace-Id"] = workspaceId;
     }
     return config;
   });

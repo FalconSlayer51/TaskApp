@@ -1,15 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { useTaskFilterStore } from "@/features/tasks/taskFilterStore";
+import { useWorkspaceStore } from "@/features/workspaces/workspaceStore";
 import { createTask, deleteTask, listTasks, updateTask, type TaskInput } from "@/features/tasks/api";
 
 export function useTasks(limit = 10) {
+  const workspaceId = useWorkspaceStore((s) => s.currentWorkspaceId) ?? "";
   const status = useTaskFilterStore((s) => s.status);
   const priority = useTaskFilterStore((s) => s.priority);
   const search = useTaskFilterStore((s) => s.search);
   const sort = useTaskFilterStore((s) => s.sort);
   const order = useTaskFilterStore((s) => s.order);
   const page = useTaskFilterStore((s) => s.page);
+  const assignedToMe = useTaskFilterStore((s) => s.assignedToMe);
 
   const params = {
     status: status === "all" ? undefined : status,
@@ -19,11 +22,13 @@ export function useTasks(limit = 10) {
     order,
     page,
     limit,
+    assignedToMe: assignedToMe || undefined,
   };
 
   return useQuery({
-    queryKey: queryKeys.tasks(params, page, limit),
+    queryKey: queryKeys.tasks(workspaceId, params, page, limit),
     queryFn: () => listTasks(params),
+    enabled: Boolean(workspaceId),
   });
 }
 
@@ -32,7 +37,7 @@ export function useTaskMutations() {
   const invalidate = async () => {
     await Promise.all([
       qc.invalidateQueries({ queryKey: ["tasks"] }),
-      qc.invalidateQueries({ queryKey: queryKeys.analytics() }),
+      qc.invalidateQueries({ queryKey: ["analytics"] }),
     ]);
   };
 

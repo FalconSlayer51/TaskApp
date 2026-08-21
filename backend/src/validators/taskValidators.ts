@@ -9,6 +9,7 @@ export const createTaskSchema = z.object({
   status: taskStatusSchema.optional().default("todo"),
   priority: taskPrioritySchema.optional().default("medium"),
   dueDate: z.union([z.coerce.date(), z.null()]).optional(),
+  assigneeId: z.union([z.string().min(1), z.null()]).optional(),
 });
 
 export const updateTaskSchema = z
@@ -18,6 +19,7 @@ export const updateTaskSchema = z
     status: taskStatusSchema.optional(),
     priority: taskPrioritySchema.optional(),
     dueDate: z.union([z.coerce.date(), z.null()]).optional(),
+    assigneeId: z.union([z.string().min(1), z.null()]).optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "Provide at least one field to update",
@@ -40,6 +42,10 @@ export const listTasksQuerySchema = z.object({
     (v) => (v === "" || v === undefined ? undefined : v),
     z.string().trim().optional(),
   ),
+  assignedToMe: z.preprocess((v) => {
+    if (v === "true" || v === true) return true;
+    return undefined;
+  }, z.boolean().optional()),
   page: z.coerce.number().int().min(1).optional().default(1),
   limit: z.coerce.number().int().min(1).max(200).optional().default(10),
   sort: z.enum(["dueDate", "priority", "createdAt"]).optional().default("createdAt"),

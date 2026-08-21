@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { Plus } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -16,6 +17,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -25,19 +27,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { EmptyState } from "@/components/EmptyState";
 import { QueryError } from "@/components/QueryError";
 import { KanbanSkeleton } from "@/components/PageSkeleton";
-import { PriorityBadge, StatusBadge } from "@/features/tasks/badges";
+import { PriorityBadge } from "@/features/tasks/badges";
 import { FilterFields, FilterSheet } from "@/features/tasks/FilterSheet";
 import { listTasks, updateTask } from "@/features/tasks/api";
 import { useTaskFilterStore } from "@/features/tasks/taskFilterStore";
+import { useWorkspaceStore } from "@/features/workspaces/workspaceStore";
+import { AssigneeLabel } from "@/features/tasks/AssigneeLabel";
+import { TaskEditor } from "@/features/tasks/TaskEditor";
+import { useTaskMutations } from "@/features/tasks/hooks";
+import type { TaskFormValues } from "@/features/tasks/TaskFormFields";
 import { queryKeys } from "@/lib/queryKeys";
 import { getApiErrorMessage } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
 import type { PublicTask, TaskStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const columns: { id: TaskStatus; title: string }[] = [
@@ -47,12 +52,13 @@ const columns: { id: TaskStatus; title: string }[] = [
 ];
 
 export function KanbanPage() {
-  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const status = useTaskFilterStore((s) => s.status);
   const search = useTaskFilterStore((s) => s.search);
   const setSearch = useTaskFilterStore((s) => s.setSearch);
   const priority = useTaskFilterStore((s) => s.priority);
+  const assignedToMe = useTaskFilterStore((s) => s.assignedToMe);
+  const workspaceId = useWorkspaceStore((s) => s.currentWorkspaceId) ?? "";
   const [draft, setDraft] = useState(search);
   useEffect(() => {
     const id = window.setTimeout(() => setSearch(draft), 250);
@@ -60,6 +66,8 @@ export function KanbanPage() {
   }, [draft, setSearch]);
   const [active, setActive] = useState<PublicTask | null>(null);
   const [optimistic, setOptimistic] = useState<Record<string, TaskStatus>>({});
+  const [editorOpen, setEditorOpen] = useState(false);
+  const mutations = useTaskMutations();
 
   const params = {
     status: status === "all" ? undefined : status,
@@ -69,15 +77,18 @@ export function KanbanPage() {
     page: 1,
     sort: "createdAt" as const,
     order: "desc" as const,
+    assignedToMe: assignedToMe || undefined,
   };
 
   const query = useQuery({
-    queryKey: queryKeys.tasks(params, 1, 200),
+    queryKey: queryKeys.tasks(workspaceId, params, 1, 200),
     queryFn: () => listTasks(params),
+    enabled: Boolean(workspaceId),
+    refetchInterval: 15_000,
   });
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
 
   const items = useMemo(() => {
@@ -104,7 +115,7 @@ export function KanbanPage() {
       await updateTask(task.id, { status: nextStatus });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["tasks"] }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.analytics() }),
+        queryClient.invalidateQueries({ queryKey: ["analytics"] }),
       ]);
       toast.success("Moved task");
     } catch (error) {
@@ -134,7 +145,7 @@ export function KanbanPage() {
   const visibleColumns = columns.filter((col) => status === "all" || status === col.id);
 
   const board = (
-    <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 md:mx-0 md:px-0">
+    <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0">
       {visibleColumns.map((col) => (
         <KanbanColumn
           key={col.id}
@@ -142,7 +153,9 @@ export function KanbanPage() {
           title={col.title}
           tasks={grouped[col.id]}
           draggable={!isMobile}
+          emptyHint={isMobile ? "No tasks" : "Drop a card here"}
           onStatusChange={isMobile ? moveTask : undefined}
+          onCreate={col.id === "todo" ? () => setEditorOpen(true) : undefined}
         />
       ))}
     </div>
@@ -150,16 +163,22 @@ export function KanbanPage() {
 
   return (
     <div className="space-y-6">
-      <div className="hidden md:block">
-        <h2 className="text-2xl tracking-tight">Board</h2>
-        <p className="text-sm text-muted-foreground">Drag a card to change status.</p>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="hidden md:block">
+          <h2 className="text-2xl tracking-tight">Board</h2>
+          <p className="text-sm text-muted-foreground">Drag a card to change status.</p>
+        </div>
+        <p className="text-sm text-muted-foreground md:hidden">
+          Swipe columns, then set status on a card.
+        </p>
+        <Button className="min-h-11 w-full md:w-auto md:min-h-8" onClick={() => setEditorOpen(true)}>
+          <Plus />
+          Create task
+        </Button>
       </div>
-      <p className="text-sm text-muted-foreground md:hidden">
-        Swipe columns, then set status on a card.
-      </p>
 
-      <div className="flex flex-col gap-3 md:flex-row md:items-end">
-        <div className="flex items-end gap-2 md:min-w-0 md:flex-1">
+      <div className="space-y-3">
+        <div className="flex items-end gap-2">
           <div className="min-w-0 flex-1 space-y-2">
             <Label htmlFor="board-search">Search</Label>
             <Input
@@ -172,7 +191,7 @@ export function KanbanPage() {
           </div>
           <FilterSheet showSort={false} />
         </div>
-        <div className="hidden min-w-0 flex-1 md:block">
+        <div className="hidden md:block">
           <FilterFields showSort={false} />
         </div>
       </div>
@@ -181,34 +200,44 @@ export function KanbanPage() {
       {query.isError ? (
         <QueryError message={getApiErrorMessage(query.error)} onRetry={() => query.refetch()} />
       ) : null}
-      {!query.isLoading && !query.isError && items.length === 0 ? (
-        <EmptyState
-          headline="The board is empty"
-          description={
-            isMobile
-              ? "Create a task, then change its status from the card."
-              : "Create a task, then drag it across Todo, In progress, and Done."
-          }
-          actionLabel="Create task"
-          onAction={() => navigate("/tasks")}
-        />
-      ) : null}
 
-      {!query.isLoading && items.length > 0 ? (
-        isMobile ? (
-          board
-        ) : (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCorners}
-            onDragStart={onDragStart}
-            onDragEnd={onDragEnd}
-          >
-            {board}
-            <DragOverlay>{active ? <TaskCard task={active} overlay /> : null}</DragOverlay>
-          </DndContext>
-        )
-      ) : null}
+      {!query.isLoading && !query.isError
+        ? isMobile
+          ? board
+          : (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCorners}
+              onDragStart={onDragStart}
+              onDragEnd={onDragEnd}
+            >
+              {board}
+              <DragOverlay>{active ? <TaskCard task={active} overlay /> : null}</DragOverlay>
+            </DndContext>
+          )
+        : null}
+
+      <TaskEditor
+        open={editorOpen}
+        submitting={mutations.create.isPending}
+        onOpenChange={setEditorOpen}
+        onSubmit={async (values: TaskFormValues) => {
+          try {
+            await mutations.create.mutateAsync({
+              title: values.title,
+              description: values.description ?? "",
+              status: values.status,
+              priority: values.priority,
+              dueDate: values.dueDate ? values.dueDate.toISOString() : null,
+              assigneeId: values.assigneeId === "none" ? null : values.assigneeId,
+            });
+            toast.success("Task created");
+            setEditorOpen(false);
+          } catch (error) {
+            toast.error(getApiErrorMessage(error));
+          }
+        }}
+      />
     </div>
   );
 }
@@ -218,16 +247,20 @@ function KanbanColumn({
   title,
   tasks,
   draggable,
+  emptyHint,
   onStatusChange,
+  onCreate,
 }: {
   id: TaskStatus;
   title: string;
   tasks: PublicTask[];
   draggable: boolean;
+  emptyHint: string;
   onStatusChange?: (task: PublicTask, status: TaskStatus) => void;
+  onCreate?: () => void;
 }) {
   const className =
-    "w-[min(85vw,20rem)] shrink-0 snap-start rounded-xl border bg-muted/40 p-3 md:w-auto md:min-w-[280px] md:flex-1";
+    "flex min-h-[22rem] w-[min(85vw,20rem)] shrink-0 snap-start flex-col rounded-xl border bg-muted/40 p-3 md:w-auto md:min-w-0";
 
   const body = (
     <>
@@ -235,7 +268,7 @@ function KanbanColumn({
         <h3 className="text-sm font-medium">{title}</h3>
         <span className="text-xs text-muted-foreground">{tasks.length}</span>
       </div>
-      <div className="space-y-2">
+      <div className="flex flex-1 flex-col gap-2">
         {tasks.map((task) =>
           draggable ? (
             <DraggableCard key={task.id} task={task} />
@@ -243,6 +276,16 @@ function KanbanColumn({
             <TaskCard key={task.id} task={task} onStatusChange={onStatusChange} />
           ),
         )}
+        {tasks.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed px-3 py-8 text-center">
+            <p className="text-sm text-muted-foreground">{emptyHint}</p>
+            {onCreate ? (
+              <Button variant="ghost" className="mt-2 min-h-11 md:min-h-8" onClick={onCreate}>
+                Create task
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </>
   );
@@ -308,8 +351,8 @@ function TaskCard({
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          {onStatusChange ? null : <StatusBadge status={task.status} />}
           <PriorityBadge priority={task.priority} />
+          <AssigneeLabel assigneeId={task.assigneeId} />
           {task.dueDate ? (
             <span className="text-xs text-muted-foreground">
               {format(new Date(task.dueDate), "MMM d")}

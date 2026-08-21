@@ -32,8 +32,11 @@ export function FilterFields({ showSort = true, className }: Props) {
   const order = useTaskFilterStore((s) => s.order);
   const setSort = useTaskFilterStore((s) => s.setSort);
 
+  const assignedToMe = useTaskFilterStore((s) => s.assignedToMe);
+  const setAssignedToMe = useTaskFilterStore((s) => s.setAssignedToMe);
+
   return (
-    <div className={cn("grid gap-4 sm:grid-cols-2", showSort && "lg:grid-cols-3", className)}>
+    <div className={cn("grid gap-4", showSort ? "sm:grid-cols-2 xl:grid-cols-4" : "md:grid-cols-3", className)}>
       <div className="space-y-2">
         <Label>Status</Label>
         <Select value={status ?? "all"} onValueChange={(v) => setStatus(v as typeof status)}>
@@ -62,6 +65,21 @@ export function FilterFields({ showSort = true, className }: Props) {
             <SelectItem value="low">Low</SelectItem>
             <SelectItem value="medium">Medium</SelectItem>
             <SelectItem value="high">High</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label>Assignee</Label>
+        <Select
+          value={assignedToMe ? "me" : "all"}
+          onValueChange={(v) => setAssignedToMe(v === "me")}
+        >
+          <SelectTrigger className="min-h-11 w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Everyone</SelectItem>
+            <SelectItem value="me">Assigned to me</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -95,8 +113,11 @@ export function FilterSheet({ showSort = true }: Props) {
   const [open, setOpen] = useState(false);
   const status = useTaskFilterStore((s) => s.status);
   const priority = useTaskFilterStore((s) => s.priority);
+  const assignedToMe = useTaskFilterStore((s) => s.assignedToMe);
   const active =
-    (status && status !== "all" ? 1 : 0) + (priority && priority !== "all" ? 1 : 0);
+    (status && status !== "all" ? 1 : 0) +
+    (priority && priority !== "all" ? 1 : 0) +
+    (assignedToMe ? 1 : 0);
 
   return (
     <>

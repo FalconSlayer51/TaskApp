@@ -7,6 +7,7 @@ import {
   updateTask,
 } from "../controllers/taskController.js";
 import { requireAuth } from "../middleware/authMiddleware.js";
+import { requireWorkspaceMember } from "../middleware/workspaceMiddleware.js";
 import { validate } from "../middleware/validate.js";
 import {
   createTaskSchema,
@@ -17,7 +18,7 @@ import {
 
 const router = Router();
 
-router.use(requireAuth);
+router.use(requireAuth, requireWorkspaceMember);
 
 router.get("/", validate(listTasksQuerySchema, "query"), listTasks);
 router.post("/", validate(createTaskSchema), createTask);

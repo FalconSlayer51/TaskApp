@@ -29,6 +29,7 @@ import { useTaskMutations, useTasks } from "@/features/tasks/hooks";
 import { TaskEditor } from "@/features/tasks/TaskEditor";
 import { FilterFields, FilterSheet } from "@/features/tasks/FilterSheet";
 import { PriorityBadge, StatusBadge } from "@/features/tasks/badges";
+import { AssigneeLabel } from "@/features/tasks/AssigneeLabel";
 import type { PublicTask } from "@/lib/types";
 import { getApiErrorMessage } from "@/lib/api";
 import type { TaskFormValues } from "@/features/tasks/TaskFormFields";
@@ -60,6 +61,7 @@ export function TasksPage() {
     status: values.status,
     priority: values.priority,
     dueDate: values.dueDate ? values.dueDate.toISOString() : null,
+    assigneeId: values.assigneeId === "none" ? null : values.assigneeId,
   });
 
   const openCreate = () => {
@@ -149,6 +151,7 @@ export function TasksPage() {
                   <TableHead>Title</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Priority</TableHead>
+                  <TableHead>Assignee</TableHead>
                   <TableHead>Due</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -162,6 +165,9 @@ export function TasksPage() {
                     </TableCell>
                     <TableCell>
                       <PriorityBadge priority={task.priority} />
+                    </TableCell>
+                    <TableCell>
+                      <AssigneeLabel assigneeId={task.assigneeId} />
                     </TableCell>
                     <TableCell>
                       {task.dueDate ? format(new Date(task.dueDate), "MMM d") : "—"}
@@ -225,9 +231,10 @@ export function TasksPage() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </CardHeader>
-                <CardContent className="flex flex-wrap gap-2">
+                <CardContent className="flex flex-wrap items-center gap-2">
                   <StatusBadge status={task.status} />
                   <PriorityBadge priority={task.priority} />
+                  <AssigneeLabel assigneeId={task.assigneeId} />
                   <span className="text-sm text-muted-foreground">
                     {task.dueDate ? format(new Date(task.dueDate), "MMM d") : "No due date"}
                   </span>

@@ -4,6 +4,7 @@ import { User } from "../models/User.js";
 import { AppError } from "../utils/AppError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { signToken, toPublicUser } from "../utils/mappers.js";
+import { ensurePersonalWorkspace } from "../utils/workspaces.js";
 import type { loginSchema, registerSchema, updateMeSchema } from "../validators/authValidators.js";
 import type { z } from "zod";
 
@@ -18,6 +19,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 
   const passwordHash = await bcrypt.hash(password, 12);
   const user = await User.create({ name, email, passwordHash, role: "user" });
+  await ensurePersonalWorkspace(user);
   const token = signToken(user.id);
 
   res.status(201).json({ token, user: toPublicUser(user) });

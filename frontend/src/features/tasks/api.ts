@@ -9,6 +9,7 @@ export type ListTaskParams = {
   limit?: number;
   sort?: "dueDate" | "priority" | "createdAt";
   order?: "asc" | "desc";
+  assignedToMe?: boolean;
 };
 
 export type TaskInput = {
@@ -17,6 +18,7 @@ export type TaskInput = {
   status?: TaskStatus;
   priority?: TaskPriority;
   dueDate?: string | null;
+  assigneeId?: string | null;
 };
 
 export async function listTasks(params: ListTaskParams) {
