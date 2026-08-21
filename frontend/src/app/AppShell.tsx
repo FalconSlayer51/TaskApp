@@ -73,7 +73,7 @@ function AppSidebar() {
                     isActive={location.pathname === item.to}
                     tooltip={item.label}
                   >
-                    <NavLink to={item.to} end={item.to === "/"}>
+                    <NavLink to={item.to} end={item.to === "/dashboard"}>
                       <item.icon />
                       <span>{item.label}</span>
                     </NavLink>

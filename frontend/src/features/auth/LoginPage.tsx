@@ -37,7 +37,12 @@ export function LoginPage() {
       <div className="w-full max-w-md rounded-none bg-transparent p-0 sm:rounded-2xl sm:border sm:bg-card sm:p-6 sm:shadow-sm md:p-8">
         <p className="text-xs font-medium tracking-wide text-primary uppercase">Task Tracker</p>
         <h1 className="mt-2 text-3xl tracking-tight">Welcome back</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Sign in to pick up your personal tasks.</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Sign in to your workspaces — personal and any you were invited to.{" "}
+          <Link to="/" className="font-medium text-primary underline-offset-4 hover:underline">
+            How it works
+          </Link>
+        </p>
 
         {formError ? (
           <Alert variant="destructive" className="mt-6">
@@ -53,7 +58,7 @@ export function LoginPage() {
             try {
               const result = await loginUser(values);
               login(result.token, result.user);
-              navigate("/");
+              navigate("/dashboard");
             } catch (error) {
               const fields = getFieldErrors(error);
               Object.entries(fields).forEach(([path, message]) => {

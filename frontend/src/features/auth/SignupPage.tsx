@@ -39,7 +39,11 @@ export function SignupPage() {
         <p className="text-xs font-medium tracking-wide text-primary uppercase">Task Tracker</p>
         <h1 className="mt-2 text-3xl tracking-tight">Create your workspace</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          A private list for your own work — no sharing, no extra roles.
+          You get a personal workspace. You can invite people who already have accounts and share a
+          board.{" "}
+          <Link to="/" className="font-medium text-primary underline-offset-4 hover:underline">
+            How it works
+          </Link>
         </p>
 
         {formError ? (
@@ -56,7 +60,7 @@ export function SignupPage() {
             try {
               const result = await registerUser(values);
               login(result.token, result.user);
-              navigate("/");
+              navigate("/dashboard");
             } catch (error) {
               const fields = getFieldErrors(error);
               Object.entries(fields).forEach(([path, message]) => {

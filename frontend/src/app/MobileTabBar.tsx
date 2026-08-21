@@ -14,7 +14,7 @@ export function MobileTabBar() {
           <li key={item.to}>
             <NavLink
               to={item.to}
-              end={item.to === "/"}
+              end={item.to === "/dashboard"}
               className={({ isActive }) =>
                 cn(
                   "flex min-h-11 flex-col items-center justify-center gap-0.5 px-1 py-2 text-[11px] font-medium",
