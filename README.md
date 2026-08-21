@@ -170,11 +170,8 @@ Errors return JSON with a `message` and optional field `errors[]`. `401` clears 
 
 **Workspaces as tenancy.** Every task belongs to one `workspaceId`. The client sends `X-Workspace-Id` on API calls; list, board, and analytics only show data for the selected workspace. Users get a personal workspace at registration; shared workspaces are added via membership rows, not by copying tasks.
 
-**Sharing without email.** Invites look up existing accounts (`GET .../directory`, `POST .../invites` with `userId`). No SMTP, no magic links. Owners add people from Settings; invitees see the new workspace in the switcher after polling (~15s) or on tab focus.
-
 **One board, many views.** List and kanban read the same task collection for the current workspace. Assignee is metadata on the task (`assigneeId`), not a separate inbox on the assignee’s personal workspace. To see assigned work, switch to the shared workspace.
 
-**Collaboration refresh.** No WebSockets or SSE. TanStack Query polls workspace-scoped queries every 15 seconds and refetches on window focus. Mutations invalidate the caller’s cache immediately; other users may lag until the next poll — document tells users to refresh if status looks stale.
 
 **Auth and CORS.** Stateless JWT in `Authorization`. Single allowed frontend origin via `CLIENT_ORIGIN`. Passwords hashed with bcrypt; API validates all input with Zod before controllers run.
 
