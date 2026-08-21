@@ -15,7 +15,6 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,14 +30,12 @@ import { QueryError } from "@/components/QueryError";
 import { KanbanSkeleton } from "@/components/PageSkeleton";
 import { PriorityBadge } from "@/features/tasks/badges";
 import { FilterFields, FilterSheet } from "@/features/tasks/FilterSheet";
-import { listTasks, updateTask } from "@/features/tasks/api";
+import { updateTask } from "@/features/tasks/api";
 import { useTaskFilterStore } from "@/features/tasks/taskFilterStore";
-import { useWorkspaceStore } from "@/features/workspaces/workspaceStore";
 import { AssigneeLabel } from "@/features/tasks/AssigneeLabel";
 import { TaskEditor } from "@/features/tasks/TaskEditor";
-import { useTaskMutations } from "@/features/tasks/hooks";
+import { useTaskMutations, useTasks } from "@/features/tasks/hooks";
 import type { TaskFormValues } from "@/features/tasks/TaskFormFields";
-import { queryKeys } from "@/lib/queryKeys";
 import { getApiErrorMessage } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
 import type { PublicTask, TaskStatus } from "@/lib/types";
@@ -56,9 +53,6 @@ export function KanbanPage() {
   const status = useTaskFilterStore((s) => s.status);
   const search = useTaskFilterStore((s) => s.search);
   const setSearch = useTaskFilterStore((s) => s.setSearch);
-  const priority = useTaskFilterStore((s) => s.priority);
-  const assignedToMe = useTaskFilterStore((s) => s.assignedToMe);
-  const workspaceId = useWorkspaceStore((s) => s.currentWorkspaceId) ?? "";
   const [draft, setDraft] = useState(search);
   useEffect(() => {
     const id = window.setTimeout(() => setSearch(draft), 250);
@@ -68,24 +62,7 @@ export function KanbanPage() {
   const [optimistic, setOptimistic] = useState<Record<string, TaskStatus>>({});
   const [editorOpen, setEditorOpen] = useState(false);
   const mutations = useTaskMutations();
-
-  const params = {
-    status: status === "all" ? undefined : status,
-    priority: priority === "all" ? undefined : priority,
-    search: search.trim() || undefined,
-    limit: 200,
-    page: 1,
-    sort: "createdAt" as const,
-    order: "desc" as const,
-    assignedToMe: assignedToMe || undefined,
-  };
-
-  const query = useQuery({
-    queryKey: queryKeys.tasks(workspaceId, params, 1, 200),
-    queryFn: () => listTasks(params),
-    enabled: Boolean(workspaceId),
-    refetchInterval: 15_000,
-  });
+  const query = useTasks(200, { page: 1, sort: "createdAt", order: "desc" });
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),

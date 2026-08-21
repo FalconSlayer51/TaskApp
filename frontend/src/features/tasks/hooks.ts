@@ -1,18 +1,31 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import { liveQueryOptions } from "@/lib/queryClient";
 import { useTaskFilterStore } from "@/features/tasks/taskFilterStore";
 import { useWorkspaceStore } from "@/features/workspaces/workspaceStore";
-import { createTask, deleteTask, listTasks, updateTask, type TaskInput } from "@/features/tasks/api";
+import {
+  createTask,
+  deleteTask,
+  listTasks,
+  updateTask,
+  type ListTaskParams,
+  type TaskInput,
+} from "@/features/tasks/api";
 
-export function useTasks(limit = 10) {
+type UseTasksOverrides = Pick<ListTaskParams, "page" | "sort" | "order">;
+
+export function useTasks(limit = 10, overrides?: UseTasksOverrides) {
   const workspaceId = useWorkspaceStore((s) => s.currentWorkspaceId) ?? "";
   const status = useTaskFilterStore((s) => s.status);
   const priority = useTaskFilterStore((s) => s.priority);
   const search = useTaskFilterStore((s) => s.search);
-  const sort = useTaskFilterStore((s) => s.sort);
-  const order = useTaskFilterStore((s) => s.order);
-  const page = useTaskFilterStore((s) => s.page);
+  const filterSort = useTaskFilterStore((s) => s.sort);
+  const filterOrder = useTaskFilterStore((s) => s.order);
+  const filterPage = useTaskFilterStore((s) => s.page);
   const assignedToMe = useTaskFilterStore((s) => s.assignedToMe);
+  const sort = overrides?.sort ?? filterSort;
+  const order = overrides?.order ?? filterOrder;
+  const page = overrides?.page ?? filterPage;
 
   const params = {
     status: status === "all" ? undefined : status,
@@ -29,6 +42,7 @@ export function useTasks(limit = 10) {
     queryKey: queryKeys.tasks(workspaceId, params, page, limit),
     queryFn: () => listTasks(params),
     enabled: Boolean(workspaceId),
+    ...liveQueryOptions,
   });
 }
 

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchAnalytics } from "@/features/dashboard/api";
 import { useWorkspaceStore } from "@/features/workspaces/workspaceStore";
+import { liveQueryOptions } from "@/lib/queryClient";
 import { queryKeys } from "@/lib/queryKeys";
 
 export function useAnalytics() {
@@ -9,5 +10,6 @@ export function useAnalytics() {
     queryKey: queryKeys.analytics(workspaceId),
     queryFn: fetchAnalytics,
     enabled: Boolean(workspaceId),
+    ...liveQueryOptions,
   });
 }
