@@ -53,4 +53,3 @@ Open `http://localhost:5173`, create an account, and add a task.
 
 - `backend/` — Express MVC (`src/models`, `src/controllers`, `src/routes`)
 - `frontend/` — Vite React app, feature folders under `src/features`
-- `.cursor/mcp.json` — official shadcn MCP (`npx shadcn@latest mcp`). Enable it in Cursor Settings → MCP.
