@@ -2,9 +2,21 @@
 
 Task list, kanban board, and a small analytics dashboard. You get a personal workspace when you sign up. You can invite people who already have an account and share one board with them.
 
+## Live deployment
+
+| Service | URL |
+|---|---|
+| Frontend | [https://taskapp-1-fg7z.onrender.com/](https://taskapp-1-fg7z.onrender.com/) |
+| Backend API | [https://taskapp-a7iu.onrender.com](https://taskapp-a7iu.onrender.com) |
+
+Guests see the landing page at `/`. After sign-in you land on `/dashboard`. The production frontend is built with `VITE_API_URL=https://taskapp-a7iu.onrender.com`. The API allows CORS from `https://taskapp-1-fg7z.onrender.com`.
+
+Health check: `GET https://taskapp-a7iu.onrender.com/health`
+
 ## Features
 
 - Email/password auth with JWT
+- Public landing page at `/` with product docs and sharing guidance
 - Personal workspace on signup; extra workspaces when someone invites you
 - Invite picker (owners): searchable list of existing accounts — they must sign up first
 - Task CRUD, assignee, due date, search, filters, sort, pagination
@@ -12,6 +24,7 @@ Task list, kanban board, and a small analytics dashboard. You get a personal wor
 - Dashboard KPIs and charts for the **selected** workspace
 - Light / dark / system theme (saved in the browser)
 - Named sidebar on desktop; bottom tabs on phones
+- Workspace-scoped data refreshes about every 15 seconds (and on tab focus) for collaboration
 
 ## How sharing works
 
@@ -33,7 +46,7 @@ Updates from other people are not instant. The app rechecks about every 15 secon
 - Node.js 20+
 - MongoDB locally or Atlas (whitelist your IP if you use Atlas)
 
-## Environment
+## Environment (local)
 
 Copy `backend/.env.example` to `backend/.env` and set:
 
@@ -44,9 +57,9 @@ Copy `backend/.env.example` to `backend/.env` and set:
 | `JWT_SECRET` | Signing secret for access tokens |
 | `CLIENT_ORIGIN` | Frontend origin for CORS (`http://localhost:5173`) |
 
-Frontend talks to the API through the Vite proxy (`/api` → `http://localhost:4000`). Optional: set `VITE_API_URL` in `frontend/.env` if the API is on another host.
+For local dev, leave `frontend/.env` empty (or omit it). Vite proxies `/api` to `http://localhost:4000`. For production builds, set `VITE_API_URL` to the API origin (no `/api` suffix).
 
-## Run
+## Run locally
 
 Use **two terminals**. The API must be running or the UI will fail with connection errors.
 
@@ -66,7 +79,33 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`. Guests see a landing page that explains every feature. After you sign in, you land on the dashboard.
+Open `http://localhost:5173`. Guests see the landing page. After you sign in, you land on `/dashboard`.
+
+## Deploy on Render
+
+Two services from the same repo.
+
+### Backend (Web Service)
+
+| Setting | Value |
+|---|---|
+| Root Directory | `backend` |
+| Build Command | `npm install && npm run build` |
+| Start Command | `npm start` |
+
+Environment: `MONGODB_URI`, `JWT_SECRET`, `CLIENT_ORIGIN` (frontend URL, no trailing slash). Render sets `PORT` automatically.
+
+### Frontend (Static Site)
+
+| Setting | Value |
+|---|---|
+| Root Directory | `frontend` |
+| Build Command | `npm install && npm run build` |
+| Publish Directory | `dist` |
+
+Environment: `VITE_API_URL` = backend URL (e.g. `https://taskapp-a7iu.onrender.com`). Rebuild after changing this variable.
+
+**SPA routing:** add a rewrite `/*` → `/index.html` so routes like `/tasks` work on refresh.
 
 ## Layout
 
