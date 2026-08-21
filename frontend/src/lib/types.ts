@@ -21,6 +21,12 @@ export type PublicMember = {
   role: MembershipRole;
 };
 
+export type DirectoryUser = {
+  id: string;
+  name: string;
+  email: string;
+};
+
 export type PublicWorkspace = {
   id: string;
   name: string;

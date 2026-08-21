@@ -1,5 +1,5 @@
 import { api } from "@/lib/api";
-import type { PublicMember, PublicWorkspace } from "@/lib/types";
+import type { DirectoryUser, PublicMember, PublicWorkspace } from "@/lib/types";
 
 export async function listWorkspaces() {
   const { data } = await api.get<{ items: PublicWorkspace[] }>("/api/workspaces");
@@ -13,10 +13,17 @@ export async function listMembers(workspaceId: string) {
   return data.items;
 }
 
-export async function inviteMember(workspaceId: string, email: string) {
+export async function listDirectory(workspaceId: string) {
+  const { data } = await api.get<{ items: DirectoryUser[] }>(
+    `/api/workspaces/${workspaceId}/directory`,
+  );
+  return data.items;
+}
+
+export async function inviteMember(workspaceId: string, payload: { userId: string } | { email: string }) {
   const { data } = await api.post<{ member: PublicMember }>(
     `/api/workspaces/${workspaceId}/invites`,
-    { email },
+    payload,
   );
   return data.member;
 }

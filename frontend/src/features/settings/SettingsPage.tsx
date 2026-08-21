@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,7 +14,7 @@ import { getApiErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { ThemeMode } from "@/lib/types";
 import { WorkspaceSwitcher } from "@/features/workspaces/WorkspaceSwitcher";
-import { useCurrentWorkspace, useMembers } from "@/features/workspaces/hooks";
+import { useCurrentWorkspace, useDirectory, useMembers } from "@/features/workspaces/hooks";
 import { inviteMember, removeMember } from "@/features/workspaces/api";
 import { MemberAvatar } from "@/features/workspaces/MemberAvatar";
 import { queryClient } from "@/lib/queryClient";
@@ -22,10 +22,6 @@ import { queryKeys } from "@/lib/queryKeys";
 
 const schema = z.object({
   name: z.string().trim().min(1, "Name is required").max(80),
-});
-
-const inviteSchema = z.object({
-  email: z.string().email("Enter a valid email"),
 });
 
 const themes: { id: ThemeMode; label: string; hint: string }[] = [
@@ -40,23 +36,30 @@ export function SettingsPage() {
   const theme = useThemeStore((s) => s.theme);
   const setTheme = useThemeStore((s) => s.setTheme);
   const { current } = useCurrentWorkspace();
+  const isOwner = current?.role === "owner";
   const members = useMembers(current?.id ?? null);
+  const directory = useDirectory(current?.id ?? null, Boolean(isOwner));
   const form = useForm({
     resolver: zodResolver(schema),
     mode: "onBlur",
     defaultValues: { name: user?.name ?? "" },
   });
-  const inviteForm = useForm({
-    resolver: zodResolver(inviteSchema),
-    defaultValues: { email: "" },
-  });
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [directoryQuery, setDirectoryQuery] = useState("");
 
   useEffect(() => {
     form.reset({ name: user?.name ?? "" });
   }, [user?.name, form]);
 
-  const isOwner = current?.role === "owner";
+  const filteredDirectory = useMemo(() => {
+    const q = directoryQuery.trim().toLowerCase();
+    const items = directory.data ?? [];
+    if (!q) return items;
+    return items.filter(
+      (person) =>
+        person.name.toLowerCase().includes(q) || person.email.toLowerCase().includes(q),
+    );
+  }, [directory.data, directoryQuery]);
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
@@ -74,8 +77,7 @@ export function SettingsPage() {
         <CardContent className="space-y-4">
           <WorkspaceSwitcher />
           <p className="text-sm text-muted-foreground">
-            Switch which list you are looking at. Invites only work for people who already have an
-            account.
+            Switch which list you are looking at. Everyone in a workspace sees the same board.
           </p>
         </CardContent>
       </Card>
@@ -109,9 +111,14 @@ export function SettingsPage() {
                       setBusyId(member.id);
                       try {
                         await removeMember(current.id, member.id);
-                        await queryClient.invalidateQueries({
-                          queryKey: queryKeys.members(current.id),
-                        });
+                        await Promise.all([
+                          queryClient.invalidateQueries({
+                            queryKey: queryKeys.members(current.id),
+                          }),
+                          queryClient.invalidateQueries({
+                            queryKey: queryKeys.directory(current.id),
+                          }),
+                        ]);
                         if (self) {
                           await queryClient.invalidateQueries({ queryKey: queryKeys.workspaces() });
                         }
@@ -131,43 +138,66 @@ export function SettingsPage() {
           </ul>
 
           {isOwner ? (
-            <form
-              className="space-y-3 border-t pt-4"
-              onSubmit={inviteForm.handleSubmit(async ({ email }) => {
-                if (!current) return;
-                try {
-                  await inviteMember(current.id, email);
-                  inviteForm.reset();
-                  await queryClient.invalidateQueries({
-                    queryKey: queryKeys.members(current.id),
-                  });
-                  toast.success("Member added");
-                } catch (error) {
-                  toast.error(getApiErrorMessage(error));
-                }
-              })}
-            >
-              <Label htmlFor="invite-email">Invite by email</Label>
-              <Input
-                id="invite-email"
-                type="email"
-                className="min-h-11"
-                placeholder="they@example.com"
-                {...inviteForm.register("email")}
-              />
-              {inviteForm.formState.errors.email ? (
-                <p className="text-sm text-destructive">
-                  {inviteForm.formState.errors.email.message}
+            <div className="space-y-3 border-t pt-4">
+              <div className="space-y-2">
+                <Label htmlFor="directory-search">Add people</Label>
+                <Input
+                  id="directory-search"
+                  className="min-h-11"
+                  placeholder="Search by name or email"
+                  value={directoryQuery}
+                  onChange={(event) => setDirectoryQuery(event.target.value)}
+                />
+              </div>
+              {directory.isLoading ? (
+                <p className="text-sm text-muted-foreground">Loading people…</p>
+              ) : (directory.data ?? []).length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No other accounts yet — they need to sign up first.
                 </p>
-              ) : null}
-              <Button
-                className="min-h-11 w-full md:w-auto"
-                type="submit"
-                disabled={inviteForm.formState.isSubmitting}
-              >
-                {inviteForm.formState.isSubmitting ? "Inviting…" : "Invite member"}
-              </Button>
-            </form>
+              ) : filteredDirectory.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No matches for that search.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {filteredDirectory.map((person) => (
+                    <li key={person.id} className="flex items-center gap-3">
+                      <MemberAvatar name={person.name} className="size-8" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{person.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">{person.email}</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        className="min-h-11 md:min-h-8"
+                        disabled={busyId === person.id}
+                        onClick={async () => {
+                          if (!current) return;
+                          setBusyId(person.id);
+                          try {
+                            await inviteMember(current.id, { userId: person.id });
+                            await Promise.all([
+                              queryClient.invalidateQueries({
+                                queryKey: queryKeys.members(current.id),
+                              }),
+                              queryClient.invalidateQueries({
+                                queryKey: queryKeys.directory(current.id),
+                              }),
+                            ]);
+                            toast.success(`${person.name} added`);
+                          } catch (error) {
+                            toast.error(getApiErrorMessage(error));
+                          } finally {
+                            setBusyId(null);
+                          }
+                        }}
+                      >
+                        Add
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           ) : null}
         </CardContent>
       </Card>

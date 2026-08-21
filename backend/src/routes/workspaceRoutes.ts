@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   inviteMember,
+  listDirectory,
   listMembers,
   listWorkspaces,
   removeMember,
@@ -19,6 +20,7 @@ router.use(requireAuth);
 
 router.get("/", listWorkspaces);
 router.get("/:id/members", validate(workspaceIdParamsSchema, "params"), listMembers);
+router.get("/:id/directory", validate(workspaceIdParamsSchema, "params"), listDirectory);
 router.post(
   "/:id/invites",
   validate(workspaceIdParamsSchema, "params"),

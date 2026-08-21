@@ -1,8 +1,13 @@
 import { z } from "zod";
 
-export const inviteSchema = z.object({
-  email: z.string().trim().email("Enter a valid email"),
-});
+export const inviteSchema = z
+  .object({
+    userId: z.string().min(1).optional(),
+    email: z.string().trim().email("Enter a valid email").optional(),
+  })
+  .refine((value) => Boolean(value.userId || value.email), {
+    message: "Choose a person to add",
+  });
 
 export const workspaceIdParamsSchema = z.object({
   id: z.string().min(1),

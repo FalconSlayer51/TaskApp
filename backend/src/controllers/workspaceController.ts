@@ -60,19 +60,43 @@ export const listMembers = asyncHandler(async (req: Request, res: Response) => {
   res.json({ items });
 });
 
+export const listDirectory = asyncHandler(async (req: Request, res: Response) => {
+  const workspaceId = req.params.id;
+  const actor = await Membership.findOne({ workspaceId, userId: req.user?.id });
+  if (!actor || actor.role !== "owner") {
+    throw new AppError("Only the owner can view people to invite", 403);
+  }
+
+  const memberships = await Membership.find({ workspaceId });
+  const excludeIds = memberships.map((m) => m.userId);
+  const users = await User.find({ _id: { $nin: excludeIds } })
+    .select("name email")
+    .sort({ name: 1 });
+
+  res.json({
+    items: users.map((u) => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+    })),
+  });
+});
+
 export const inviteMember = asyncHandler(async (req: Request, res: Response) => {
   const workspaceId = req.params.id;
-  const { email } = req.body as z.infer<typeof inviteSchema>;
+  const { email, userId } = req.body as z.infer<typeof inviteSchema>;
 
   const actor = await Membership.findOne({ workspaceId, userId: req.user?.id });
   if (!actor || actor.role !== "owner") {
     throw new AppError("Only the owner can invite members", 403);
   }
 
-  const invitee = await User.findOne({ email: email.toLowerCase() });
+  const invitee = userId
+    ? await User.findById(userId)
+    : await User.findOne({ email: email?.toLowerCase() });
   if (!invitee) {
     throw new AppError("No account with that email. Ask them to sign up first.", 400, [
-      { path: "email", message: "No account with that email" },
+      { path: "email", message: "No account found" },
     ]);
   }
   if (invitee.id === req.user?.id) {
