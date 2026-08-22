@@ -3,6 +3,7 @@
 Task list, kanban board, and a small analytics dashboard. You get a personal workspace when you sign up. You can invite people who already have an account and share one board with them.
 
 ## Live deployment
+This project is deployed in render free plan. so expect ~50s latency for the initial requests.
 
 | Service | URL |
 |---|---|
